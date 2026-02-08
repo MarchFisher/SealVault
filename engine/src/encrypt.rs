@@ -54,12 +54,24 @@ pub fn encrypt_file(
     header.write(&mut writer)?;
 
     // ---------- KDF 派生密钥 ----------
-    let salt_string = SaltString::encode_b64(&salt).expect("failed to encode salt");
-    let key = kdf::derive_key(password, &salt_string);
+    let salt_string =
+        SaltString::encode_b64(&salt)
+           .map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData, 
+                    format!("encode salt failed: {e}"),
+                )
+            })?;
+
+    let key =
+        kdf::derive_key(password, &salt_string)
+            .map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+            })?;
 
     // ---------- Stream 加密 ----------
     let mut encryptor = StreamEncryptor::new(
-        &key.unwrap(),
+        &key,
         base_nonce,
         DEFAULT_CHUNK_SIZE,
     );

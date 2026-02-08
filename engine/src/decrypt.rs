@@ -39,12 +39,24 @@ pub fn decrypt_file(
     let salt = header.salt;
 
     // ---------- KDF 派生密钥 ----------
-    let salt_string = SaltString::encode_b64(&salt).expect("failed to encode salt");
-    let key = kdf::derive_key(password, &salt_string);
+    let salt_string =
+        SaltString::encode_b64(&salt)
+           .map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData, 
+                    format!("encode salt failed: {e}"),
+                )
+            })?;
+
+    let key =
+        kdf::derive_key(password, &salt_string)
+            .map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+            })?;
 
     // ---------- Stream 解密 ----------
     let mut decryptor = StreamDecryptor::new(
-        &key.unwrap(),
+        &key,
         header.base_nonce,
     );
 

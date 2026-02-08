@@ -3,8 +3,8 @@
 //! 提供最小可用的 CLI：
 //!
 //! 用法：
-//!   sealvault encrypt <input> <output> <password>
-//!   sealvault decrypt <input> <output> <password>
+//!   cargo run -- encrypt <input> <output> <password>
+//!   cargo run -- decrypt <input> <output> <password>
 //!
 //! 设计原则：
 //! - 不依赖 clap / structopt

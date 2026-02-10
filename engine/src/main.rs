@@ -1,38 +1,37 @@
 //! SealVault 命令行入口
-//!
-//! 提供最小可用的 CLI：
-//!
-//! 用法：
-//!   sealvault encrypt <input> <output> <password>
-//!   sealvault decrypt <input> <output> <password>
-//!
-//! 设计原则：
-//! - 不依赖 clap / structopt
-//! - 参数解析保持“一眼能懂”
-//! - 所有实际逻辑都委托给 command 模块
 
 mod crypto;
-mod format;
-mod error;
-
-use std::{env, path::Path};
-use std::process::exit;
-
-mod encrypt;
 mod decrypt;
+mod encrypt;
+mod error;
+mod format;
+
+use std::process::exit;
+use std::{env, path::Path};
+
+use crate::format::header::AeadAlgorithm;
 
 fn print_usage() {
     eprintln!(
         "Usage:\n  \
-         sealvault encrypt <input> <output> <password>\n  \
+         sealvault encrypt <input> <output> <password> [xchacha20|aes256gcm]\n  \
          sealvault decrypt <input> <output> <password>"
     );
+}
+
+fn parse_algorithm(arg: Option<&String>) -> Result<AeadAlgorithm, &'static str> {
+    match arg.map(String::as_str) {
+        None => Ok(AeadAlgorithm::XChaCha20Poly1305),
+        Some("xchacha20") | Some("xchacha20poly1305") => Ok(AeadAlgorithm::XChaCha20Poly1305),
+        Some("aes256gcm") | Some("aes-256-gcm") => Ok(AeadAlgorithm::Aes256Gcm),
+        Some(_) => Err("unsupported algorithm"),
+    }
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 5 {
+    if args.len() < 5 || args.len() > 6 {
         print_usage();
         exit(1);
     }
@@ -43,7 +42,17 @@ fn main() {
     let password = &args[4];
 
     let result = match command.as_str() {
-        "encrypt" => encrypt::encrypt_file(input, output, password),
+        "encrypt" => {
+            let algorithm = match parse_algorithm(args.get(5)) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    print_usage();
+                    exit(1);
+                }
+            };
+            encrypt::encrypt_file_with_algorithm(input, output, password, algorithm)
+        }
         "decrypt" => decrypt::decrypt_file(input, output, password),
         _ => {
             print_usage();
@@ -52,7 +61,7 @@ fn main() {
     };
 
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         exit(1);
     }
 }

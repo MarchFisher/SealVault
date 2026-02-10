@@ -48,6 +48,7 @@ pub fn decrypt_file(
     // ---------- Stream 解密 ----------
     let mut decryptor = StreamDecryptor::new(
         &key,
+        header.algorithm,
         header.base_nonce,
     );
 

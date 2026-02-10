@@ -19,15 +19,30 @@ use std::path::Path;
 
 use rand::{rngs::OsRng, RngCore};
 
+use crate::algorithm::AeadAlgorithm;
 use crate::crypto::kdf::{self, generate_salt};
 use crate::format::header::{Header, SALT_SIZE, BASE_NONCE_SIZE};
 use crate::format::stream::{StreamEncryptor, DEFAULT_CHUNK_SIZE};
 
 /// 使用密码加密文件
 pub fn encrypt_file(
+    input_path: &Path, 
+    output_path: &Path, 
+    password: &str,
+) -> std::io::Result<()> {
+    encrypt_file_with_algorithm(
+        input_path,
+        output_path,
+        password,
+        AeadAlgorithm::XChaCha20Poly1305,
+    )
+}
+
+pub fn encrypt_file_with_algorithm(
     input_path: &Path,
     output_path: &Path,
     password: &str,
+    algorithm: AeadAlgorithm,
 ) -> std::io::Result<()> {
     // ---------- 打开输入 / 输出文件 ----------
     let input = File::open(input_path)?;
@@ -46,6 +61,7 @@ pub fn encrypt_file(
 
     // ---------- 写入 Header ----------
     let header = Header::new(
+        algorithm,
         salt,
         base_nonce,
         DEFAULT_CHUNK_SIZE as u32,
@@ -64,6 +80,7 @@ pub fn encrypt_file(
     // ---------- Stream 加密 ----------
     let mut encryptor = StreamEncryptor::new(
         &key,
+        algorithm,
         base_nonce,
         DEFAULT_CHUNK_SIZE,
     );

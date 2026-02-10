@@ -16,12 +16,10 @@
 
 use std::io::{Read, Write};
 
-use chacha20poly1305::{
-    aead::{Aead, KeyInit, Payload},
-    Key, XChaCha20Poly1305, XNonce,
-};
+use crate::algorithm::{AeadAlgorithm, aes_256_gcm, xchacha20_poly1305};
+use crate::format::header::BASE_NONCE_SIZE;
 
-// Poly1305 认证标签长度，固定为 16 字节
+// AEAD 认证标签长度，固定为 16 字节
 const TAG_SIZE: usize = 16;
 
 // 每个 chunk 前的长度字段大小（u32，大端）
@@ -34,8 +32,9 @@ pub const DEFAULT_CHUNK_SIZE: usize = 64 * 1024;
 ///
 /// 负责将明文数据流按 chunk 加密并写入输出流。
 pub struct StreamEncryptor {
-    cipher: XChaCha20Poly1305,
-    base_nonce: [u8; 24],
+    key: [u8; 32],
+    algorithm: AeadAlgorithm,
+    base_nonce: [u8; BASE_NONCE_SIZE],
     chunk_index: u64,
     chunk_size: usize,
 }
@@ -48,11 +47,13 @@ impl StreamEncryptor {
     /// - chunk_size: 每个明文 chunk 的大小
     pub fn new(
         key: &[u8; 32],
-        base_nonce: [u8; 24],
+        algorithm: AeadAlgorithm,
+        base_nonce: [u8; BASE_NONCE_SIZE],
         chunk_size: usize,
     ) -> Self {
         Self {
-            cipher: XChaCha20Poly1305::new(Key::from_slice(key)),
+            key: *key,
+            algorithm,
             base_nonce,
             chunk_index: 0,
             chunk_size,
@@ -75,22 +76,25 @@ impl StreamEncryptor {
 
             let plaintext = &buffer[..read_len];
 
-            // 根据 base_nonce 和当前 chunk_index 派生唯一 nonce
-            let nonce = derive_nonce(&self.base_nonce, self.chunk_index);
-
             // 使用 chunk_index 作为 AAD，防止块重排
             let aad = self.chunk_index.to_be_bytes();
 
-            let ciphertext = self
-                .cipher
-                .encrypt(
-                    &nonce,
-                    Payload {
-                        msg: plaintext,
-                        aad: &aad,
-                    },
-                )
-                .expect("AEAD encrypt failed");
+            let ciphertext = match self.algorithm {
+                AeadAlgorithm::XChaCha20Poly1305 => xchacha20_poly1305::encrypt_chunk(
+                    &self.key,
+                    &self.base_nonce,
+                    self.chunk_index,
+                    plaintext,
+                    &aad,
+                )?,
+                AeadAlgorithm::Aes256Gcm => aes_256_gcm::encrypt_chunk(
+                    &self.key,
+                    &self.base_nonce,
+                    self.chunk_index,
+                    plaintext,
+                    &aad,
+                )?,
+            };
 
             // ciphertext = [cipher_body | tag]
             let cipher_len = ciphertext.len() - TAG_SIZE;
@@ -112,16 +116,22 @@ impl StreamEncryptor {
 ///
 /// 负责从加密 stream 中读取数据并还原明文。
 pub struct StreamDecryptor {
-    cipher: XChaCha20Poly1305,
-    base_nonce: [u8; 24],
+    key: [u8; 32],
+    algorithm: AeadAlgorithm,
+    base_nonce: [u8; BASE_NONCE_SIZE],
     chunk_index: u64,
 }
 
 impl StreamDecryptor {
     /// 创建新的 StreamDecryptor
-    pub fn new(key: &[u8; 32], base_nonce: [u8; 24]) -> Self {
+    pub fn new(
+        key: &[u8; 32], 
+        algorithm: AeadAlgorithm,
+        base_nonce: [u8; BASE_NONCE_SIZE]
+    ) -> Self {
         Self {
-            cipher: XChaCha20Poly1305::new(Key::from_slice(key)),
+            key: *key,
+            algorithm,
             base_nonce,
             chunk_index: 0,
         }
@@ -160,24 +170,24 @@ impl StreamDecryptor {
 
             cipher_body.extend_from_slice(&tag);
 
-            let nonce = derive_nonce(&self.base_nonce, self.chunk_index);
             let aad = self.chunk_index.to_be_bytes();
 
-            let plaintext = self
-                .cipher
-                .decrypt(
-                    &nonce,
-                    Payload {
-                        msg: &cipher_body,
-                        aad: &aad,
-                    },
-                )
-                .map_err(|_| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "AEAD authentication failed",
-                    )
-                })?;
+            let plaintext = match self.algorithm {
+                AeadAlgorithm::XChaCha20Poly1305 => xchacha20_poly1305::decrypt_chunk(
+                    &self.key,
+                    &self.base_nonce,
+                    self.chunk_index,
+                    &cipher_body,
+                    &aad,
+                )?,
+                AeadAlgorithm::Aes256Gcm => aes_256_gcm::decrypt_chunk(
+                    &self.key,
+                    &self.base_nonce,
+                    self.chunk_index,
+                    &cipher_body,
+                    &aad,
+                )?,
+            };
 
             writer.write_all(&plaintext)?;
             self.chunk_index += 1;
@@ -185,20 +195,4 @@ impl StreamDecryptor {
 
         Ok(())
     }
-}
-
-/// 根据 base_nonce 和 chunk_index 派生当前 chunk 的 nonce
-///
-/// 规则：
-/// - 将 chunk_index（大端）异或进 base_nonce 的低 8 字节
-/// - 保证每个 chunk 使用唯一 nonce
-fn derive_nonce(base: &[u8; 24], index: u64) -> XNonce {
-    let mut nonce = *base;
-    let idx_bytes = index.to_be_bytes();
-
-    for i in 0..8 {
-        nonce[16 + i] ^= idx_bytes[i];
-    }
-
-    XNonce::from_slice(&nonce).clone()
 }

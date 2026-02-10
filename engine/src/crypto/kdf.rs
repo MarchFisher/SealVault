@@ -10,18 +10,15 @@
 //! - 参数可在未来通过版本号升级而不破坏兼容性
 //!
 //! 输出：
-//! - 32 字节密钥（适用于 AES-256-GCM）
+//! - 32 字节密钥（适用于 XChaCha20-Poly1305 / AES-256-GCM）
 
-use argon2::{
-    password_hash::{ SaltString },
-    Algorithm, Argon2, Params, Version,
-};
+use argon2::{ password_hash::SaltString, Algorithm, Argon2, Params, Version };
 use rand::rngs::OsRng;
 use zeroize::Zeroizing;
 
 use crate::error::SealVaultError;
 
-/// 派生密钥长度（AES-256）
+/// 派生密钥长度（256-bit）
 pub const KEY_LEN: usize = 32;
 
 /// Argon2 参数配置（SealVault v1）

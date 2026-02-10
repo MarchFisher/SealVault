@@ -5,6 +5,7 @@
 //! Header 的职责：
 //! - 标识文件类型（magic）
 //! - 指明版本号
+//! - 指明 AEAD 算法
 //! - 提供密钥派生所需的 salt
 //! - 提供 Stream 所需的 base_nonce
 //! - 指明 stream 的 chunk_size
@@ -19,6 +20,8 @@
 
 use std::io::{Read, Write};
 
+use crate::algorithm::AeadAlgorithm;
+
 /// SealVault 文件魔数（ASCII）
 ///
 /// 用于快速判断文件类型，避免误读。
@@ -31,17 +34,19 @@ pub const VERSION: u8 = 1;
 pub const SALT_SIZE: usize = 16;
 
 /// XChaCha20-Poly1305 base nonce 长度（字节）
+/// AES-256-GCM 实际使用前 12 字节
 pub const BASE_NONCE_SIZE: usize = 24;
 
 /// SealVault v1 Header 固定大小
 ///
 /// 8  (magic)
 /// 1  (version)
+/// 1  (algorithm)
 /// 16 (salt)
 /// 24 (base_nonce)
 /// 4  (chunk_size)
 pub const HEADER_SIZE: usize =
-    8 + 1 + SALT_SIZE + BASE_NONCE_SIZE + 4;
+    8 + 1 + 1 + SALT_SIZE + BASE_NONCE_SIZE + 4;
 
 /// SealVault v1 Header 结构
 ///
@@ -50,6 +55,7 @@ pub const HEADER_SIZE: usize =
 #[derive(Debug, Clone)]
 pub struct Header {
     pub version: u8,
+    pub algorithm: AeadAlgorithm,
     pub salt: [u8; SALT_SIZE],
     pub base_nonce: [u8; BASE_NONCE_SIZE],
     pub chunk_size: u32,
@@ -60,12 +66,14 @@ impl Header {
     ///
     /// 该函数通常在加密时调用。
     pub fn new(
+        algorithm: AeadAlgorithm,
         salt: [u8; SALT_SIZE],
         base_nonce: [u8; BASE_NONCE_SIZE],
         chunk_size: u32,
     ) -> Self {
         Self {
             version: VERSION,
+            algorithm,
             salt,
             base_nonce,
             chunk_size,
@@ -81,6 +89,9 @@ impl Header {
 
         // version
         writer.write_all(&[self.version])?;
+
+        // algorithm
+        writer.write_all(&[self.algorithm.to_u8()])?;
 
         // salt
         writer.write_all(&self.salt)?;
@@ -113,12 +124,24 @@ impl Header {
         reader.read_exact(&mut version_buf)?;
         let version = version_buf[0];
 
-        if version != VERSION {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "unsupported SealVault version",
-            ));
-        }
+        let algorithm = match version {
+            VERSION => {
+                let mut algorithm_buf = [0u8; 1];
+                reader.read_exact(&mut algorithm_buf)?;
+                AeadAlgorithm::from_u8(algorithm_buf[0]).ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "unsupported SealVault algorithm",
+                    )
+                })?
+            }
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "unsupported SealVault version",
+                ));
+            }
+        };
 
         let mut salt = [0u8; SALT_SIZE];
         reader.read_exact(&mut salt)?;
@@ -139,6 +162,7 @@ impl Header {
 
         Ok(Self {
             version,
+            algorithm,
             salt,
             base_nonce,
             chunk_size,

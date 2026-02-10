@@ -19,10 +19,9 @@ use std::path::Path;
 
 use rand::{rngs::OsRng, RngCore};
 
-use crate::crypto::kdf;
+use crate::crypto::kdf::{self, generate_salt};
 use crate::format::header::{Header, SALT_SIZE, BASE_NONCE_SIZE};
 use crate::format::stream::{StreamEncryptor, DEFAULT_CHUNK_SIZE};
-use argon2::password_hash::SaltString;
 
 /// 使用密码加密文件
 pub fn encrypt_file(
@@ -54,14 +53,7 @@ pub fn encrypt_file(
     header.write(&mut writer)?;
 
     // ---------- KDF 派生密钥 ----------
-    let salt_string =
-        SaltString::encode_b64(&salt)
-           .map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData, 
-                    format!("encode salt failed: {e}"),
-                )
-            })?;
+    let salt_string = generate_salt();
 
     let key =
         kdf::derive_key(password, &salt_string)

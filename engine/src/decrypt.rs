@@ -16,10 +16,9 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
-use crate::crypto::kdf;
+use crate::crypto::kdf::{self, generate_salt};
 use crate::format::header::Header;
 use crate::format::stream::StreamDecryptor;
-use argon2::password_hash::SaltString;
 
 /// 使用密码解密文件
 pub fn decrypt_file(
@@ -36,17 +35,9 @@ pub fn decrypt_file(
 
     // ---------- 读取并校验 Header ----------
     let header = Header::read(&mut reader)?;
-    let salt = header.salt;
 
     // ---------- KDF 派生密钥 ----------
-    let salt_string =
-        SaltString::encode_b64(&salt)
-           .map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData, 
-                    format!("encode salt failed: {e}"),
-                )
-            })?;
+    let salt_string = generate_salt();
 
     let key =
         kdf::derive_key(password, &salt_string)

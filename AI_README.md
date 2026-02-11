@@ -135,8 +135,8 @@ AI 在示例中给出的 commit message：
 
 #### Commit 类型即图标说明
 
-- ✨feat: 新功能 
-- 🛠️fix: 修复 bug 
+- ✨feat(scope): 新功能 
+- 🛠️fix(scope): 修复 bug 
 - 📄docs: 文档更新 
 - 🎨style: 代码格式化
 - 🔨refactor: 重构代码 
@@ -167,5 +167,9 @@ AI 在示例中给出的 commit message：
 AI_README 的内容 **优先级高于临时 prompt**，但低于明确的用户即时指令。
 
 ---
+
+## 11. 工作流
+
+- Rust-Engine-CI: 编译、测试 Rust 代码
 
 > 如果 AI 的回答与本文件冲突，应以本文件为准，并提示用户存在冲突。

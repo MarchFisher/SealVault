@@ -264,7 +264,7 @@ dependencies = [
 
 [[package]]
 name = "engine"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "aes-gcm",
  "anyhow",

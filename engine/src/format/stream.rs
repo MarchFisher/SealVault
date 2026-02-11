@@ -125,9 +125,9 @@ pub struct StreamDecryptor {
 impl StreamDecryptor {
     /// 创建新的 StreamDecryptor
     pub fn new(
-        key: &[u8; 32], 
+        key: &[u8; 32],
         algorithm: AeadAlgorithm,
-        base_nonce: [u8; BASE_NONCE_SIZE]
+        base_nonce: [u8; BASE_NONCE_SIZE],
     ) -> Self {
         Self {
             key: *key,

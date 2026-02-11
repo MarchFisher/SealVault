@@ -1,22 +1,18 @@
-mod encrypt;
 mod decrypt;
+mod encrypt;
 
 pub mod algorithm;
 pub mod crypto;
+pub mod error;
 pub mod format;
 pub mod fs;
-pub mod error;
 
-pub use error::SealVaultError;
 pub use algorithm::AeadAlgorithm;
+pub use error::SealVaultError;
 
 use std::path::Path;
 
-pub fn encrypt(
-    input: &Path,
-    output: &Path,
-    password: &str,
-) -> std::io::Result<()> {
+pub fn encrypt(input: &Path, output: &Path, password: &str) -> std::io::Result<()> {
     encrypt::encrypt_file(input, output, password)
 }
 
@@ -29,10 +25,6 @@ pub fn encrypt_with_algorithm(
     encrypt::encrypt_file_with_algorithm(input, output, password, algorithm)
 }
 
-pub fn decrypt(
-    input: &Path,
-    output: &Path,
-    password: &str,
-) -> std::io::Result<()> {
+pub fn decrypt(input: &Path, output: &Path, password: &str) -> std::io::Result<()> {
     decrypt::decrypt_file(input, output, password)
 }

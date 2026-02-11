@@ -17,19 +17,15 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
-use rand::{rngs::OsRng, RngCore};
+use rand::{RngCore, rngs::OsRng};
 
 use crate::algorithm::AeadAlgorithm;
 use crate::crypto::kdf::{self, generate_salt};
-use crate::format::header::{Header, SALT_SIZE, BASE_NONCE_SIZE};
-use crate::format::stream::{StreamEncryptor, DEFAULT_CHUNK_SIZE};
+use crate::format::header::{BASE_NONCE_SIZE, Header, SALT_SIZE};
+use crate::format::stream::{DEFAULT_CHUNK_SIZE, StreamEncryptor};
 
 /// 使用密码加密文件
-pub fn encrypt_file(
-    input_path: &Path, 
-    output_path: &Path, 
-    password: &str,
-) -> std::io::Result<()> {
+pub fn encrypt_file(input_path: &Path, output_path: &Path, password: &str) -> std::io::Result<()> {
     encrypt_file_with_algorithm(
         input_path,
         output_path,
@@ -60,30 +56,17 @@ pub fn encrypt_file_with_algorithm(
     OsRng.fill_bytes(&mut base_nonce);
 
     // ---------- 写入 Header ----------
-    let header = Header::new(
-        algorithm,
-        salt,
-        base_nonce,
-        DEFAULT_CHUNK_SIZE as u32,
-    );
+    let header = Header::new(algorithm, salt, base_nonce, DEFAULT_CHUNK_SIZE as u32);
     header.write(&mut writer)?;
 
     // ---------- KDF 派生密钥 ----------
     let salt_string = generate_salt();
 
-    let key =
-        kdf::derive_key(password, &salt_string)
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-            })?;
+    let key = kdf::derive_key(password, &salt_string)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     // ---------- Stream 加密 ----------
-    let mut encryptor = StreamEncryptor::new(
-        &key,
-        algorithm,
-        base_nonce,
-        DEFAULT_CHUNK_SIZE,
-    );
+    let mut encryptor = StreamEncryptor::new(&key, algorithm, base_nonce, DEFAULT_CHUNK_SIZE);
 
     encryptor.encrypt(reader, &mut writer)?;
 

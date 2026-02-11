@@ -45,8 +45,7 @@ pub const BASE_NONCE_SIZE: usize = 24;
 /// 16 (salt)
 /// 24 (base_nonce)
 /// 4  (chunk_size)
-pub const HEADER_SIZE: usize =
-    8 + 1 + 1 + SALT_SIZE + BASE_NONCE_SIZE + 4;
+pub const HEADER_SIZE: usize = 8 + 1 + 1 + SALT_SIZE + BASE_NONCE_SIZE + 4;
 
 /// SealVault v1 Header 结构
 ///

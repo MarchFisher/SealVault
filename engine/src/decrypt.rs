@@ -21,11 +21,7 @@ use crate::format::header::Header;
 use crate::format::stream::StreamDecryptor;
 
 /// 使用密码解密文件
-pub fn decrypt_file(
-    input_path: &Path,
-    output_path: &Path,
-    password: &str,
-) -> std::io::Result<()> {
+pub fn decrypt_file(input_path: &Path, output_path: &Path, password: &str) -> std::io::Result<()> {
     // ---------- 打开输入 / 输出文件 ----------
     let input = File::open(input_path)?;
     let output = File::create(output_path)?;
@@ -39,18 +35,11 @@ pub fn decrypt_file(
     // ---------- KDF 派生密钥 ----------
     let salt_string = generate_salt();
 
-    let key =
-        kdf::derive_key(password, &salt_string)
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-            })?;
+    let key = kdf::derive_key(password, &salt_string)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     // ---------- Stream 解密 ----------
-    let mut decryptor = StreamDecryptor::new(
-        &key,
-        header.algorithm,
-        header.base_nonce,
-    );
+    let mut decryptor = StreamDecryptor::new(&key, header.algorithm, header.base_nonce);
 
     decryptor.decrypt(&mut reader, &mut writer)?;
 

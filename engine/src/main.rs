@@ -13,14 +13,14 @@
 
 mod algorithm;
 mod crypto;
-mod format;
 mod error;
+mod format;
 
-use std::{env, path::Path};
 use std::process::exit;
+use std::{env, path::Path};
 
-mod encrypt;
 mod decrypt;
+mod encrypt;
 
 use crate::algorithm::AeadAlgorithm;
 

@@ -1,5 +1,4 @@
-///! SealVault 双加解密模式验证
-
+//! SealVault 双加解密模式验证
 use std::fs;
 use std::io::Write;
 

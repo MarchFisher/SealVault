@@ -1,7 +1,7 @@
 //! SealVault 加密/解密流程测试
-//! 
+//!
 //! 这个文件是对加密解密流程的测试，测试了加密解密的正确性，以及密码错误时的错误处理。
-//! 
+//!
 //! 测试流程：
 //! 1. 创建临时目录，并在其中创建输入文件，以及加密文件、解密文件。
 //! 2. 写入输入文件，并使用正确的密码加密文件。
@@ -14,7 +14,6 @@ use std::io::Write;
 
 use tempfile::tempdir;
 
-
 /// 测试加密解密流程
 #[test]
 fn encrypt_decrypt_roundtrip() {
@@ -26,15 +25,11 @@ fn encrypt_decrypt_roundtrip() {
     let plaintext = b"sealvault test payload";
     {
         let mut input_file = fs::File::create(&input_path).expect("create input");
-        input_file
-            .write_all(plaintext)
-            .expect("write plaintext");
+        input_file.write_all(plaintext).expect("write plaintext");
     }
 
-    engine::encrypt(&input_path, &encrypted_path, "test-password")
-        .expect("encrypt file");
-    engine::decrypt(&encrypted_path, &decrypted_path, "test-password")
-        .expect("decrypt file");
+    engine::encrypt(&input_path, &encrypted_path, "test-password").expect("encrypt file");
+    engine::decrypt(&encrypted_path, &decrypted_path, "test-password").expect("decrypt file");
 
     let decrypted = fs::read(&decrypted_path).expect("read decrypted");
     assert_eq!(decrypted, plaintext);
@@ -55,8 +50,7 @@ fn decrypt_with_wrong_password_fails() {
             .expect("write plaintext");
     }
 
-    engine::encrypt(&input_path, &encrypted_path, "correct-password")
-        .expect("encrypt file");
+    engine::encrypt(&input_path, &encrypted_path, "correct-password").expect("encrypt file");
 
     let result = engine::decrypt(&encrypted_path, &decrypted_path, "wrong-password");
     assert!(result.is_err(), "expected decrypt to fail");

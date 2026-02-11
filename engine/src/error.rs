@@ -6,16 +6,16 @@ pub enum SealVaultError {
     Io(#[from] std::io::Error),
 
     #[error("invalid password or not a SealVault file")]
-    InvalidPasswordOrFile,
+    _InvalidPasswordOrFile,
 
     #[error("unsupported SealVault version")]
-    UnsupportedVersion,
+    _UnsupportedVersion,
 
     #[error("corrupted data")]
-    CorruptedData,
+    _CorruptedData,
 
     #[error("output already exists")]
-    AlreadyExists,
+    _AlreadyExists,
 
     #[error("internal error")]
     Internal,

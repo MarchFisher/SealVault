@@ -30,7 +30,7 @@ fn argon2_params() -> Params {
         64 * 1024, // 内存成本：64 MB
         3,         // 时间成本：迭代次数
         1,         // 并行度
-        Some(KEY_LEN as usize),
+        Some(KEY_LEN),
     )
     .expect("Argon2 参数配置错误")
 }

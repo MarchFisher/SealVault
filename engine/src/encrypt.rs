@@ -24,6 +24,7 @@ use crate::crypto::kdf::{self, generate_salt};
 use crate::format::header::{BASE_NONCE_SIZE, Header, SALT_SIZE};
 use crate::format::stream::{DEFAULT_CHUNK_SIZE, StreamEncryptor};
 
+#[allow(dead_code)]
 /// 使用密码加密文件
 pub fn encrypt_file(input_path: &Path, output_path: &Path, password: &str) -> std::io::Result<()> {
     encrypt_file_with_algorithm(

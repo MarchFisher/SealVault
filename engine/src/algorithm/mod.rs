@@ -32,5 +32,6 @@ impl AeadAlgorithm {
     }
 }
 
+// #[allow(clippy::unus)]
 /// 默认算法：XChaCha20-Poly1305。
-pub const DEFAULT_AEAD_ALGORITHM: AeadAlgorithm = AeadAlgorithm::XChaCha20Poly1305;
+pub const _DEFAULT_AEAD_ALGORITHM: AeadAlgorithm = AeadAlgorithm::XChaCha20Poly1305;

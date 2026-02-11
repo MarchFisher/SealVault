@@ -17,10 +17,11 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
+use argon2::password_hash::SaltString;
 use rand::{RngCore, rngs::OsRng};
 
 use crate::algorithm::AeadAlgorithm;
-use crate::crypto::kdf::{self, generate_salt};
+use crate::crypto::kdf;
 use crate::format::header::{BASE_NONCE_SIZE, Header, SALT_SIZE};
 use crate::format::stream::{DEFAULT_CHUNK_SIZE, StreamEncryptor};
 
@@ -61,10 +62,11 @@ pub fn encrypt_file_with_algorithm(
     header.write(&mut writer)?;
 
     // ---------- KDF 派生密钥 ----------
-    let salt_string = generate_salt();
+    let salt_string = SaltString::encode_b64(&salt)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
 
     let key = kdf::derive_key(password, &salt_string)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
 
     // ---------- Stream 加密 ----------
     let mut encryptor = StreamEncryptor::new(&key, algorithm, base_nonce, DEFAULT_CHUNK_SIZE);

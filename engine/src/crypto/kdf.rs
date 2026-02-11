@@ -13,7 +13,6 @@
 //! - 32 字节密钥（适用于 XChaCha20-Poly1305 / AES-256-GCM）
 
 use argon2::{Algorithm, Argon2, Params, Version, password_hash::SaltString};
-use rand::rngs::OsRng;
 use zeroize::Zeroizing;
 
 use crate::error::SealVaultError;
@@ -33,14 +32,6 @@ fn argon2_params() -> Params {
         Some(KEY_LEN),
     )
     .expect("Argon2 参数配置错误")
-}
-
-/// 生成用于 KDF 的随机 salt
-///
-/// 每个 .svlt 文件都必须使用独立的 salt，
-/// 严禁复用。
-pub fn generate_salt() -> SaltString {
-    SaltString::generate(&mut OsRng)
 }
 
 /// 根据密码和 salt 派生对称加密密钥

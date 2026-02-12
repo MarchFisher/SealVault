@@ -35,6 +35,35 @@ fn encrypt_decrypt_roundtrip() {
     assert_eq!(decrypted, plaintext);
 }
 
+/// 测试加密解密流程(AES-256-GCM)
+#[test]
+fn encrypt_decrypt_roundtrip_with_aes_256_gcm() {
+    // 验证 AES-256-GCM 模式也能完成端到端 round-trip。
+    let temp_dir = tempdir().expect("create temp dir");
+    let input_path = temp_dir.path().join("input.txt");
+    let encrypted_path = temp_dir.path().join("output_aes.svlt");
+    let decrypted_path = temp_dir.path().join("decrypted.txt");
+
+    let plaintext = b"sealvault aes mode payload";
+    {
+        let mut input_file = fs::File::create(&input_path).expect("create input");
+        input_file.write_all(plaintext).expect("write plaintext");
+    }
+
+    engine::encrypt_with_algorithm(
+        &input_path,
+        &encrypted_path,
+        "test-password",
+        engine::AeadAlgorithm::Aes256Gcm,
+    )
+    .expect("encrypt file with aes");
+
+    engine::decrypt(&encrypted_path, &decrypted_path, "test-password").expect("decrypt file");
+
+    let decrypted = fs::read(&decrypted_path).expect("read decrypted");
+    assert_eq!(decrypted, plaintext);
+}
+
 /// 测试解密失败(missing key)时的错误处理
 #[test]
 fn decrypt_with_wrong_password_fails() {

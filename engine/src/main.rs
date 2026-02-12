@@ -3,8 +3,10 @@
 //! 提供最小可用的 CLI：
 //!
 //! 用法：
-//!   cargo run -- encrypt <input> <output> <password>
+//!   cargo run -- encrypt <input> <output> <password> [algorithm]
 //!   cargo run -- decrypt <input> <output> <password>
+//!   cargo run -- encrypt-folder <input_dir> <output_dir> <password> [algorithm]
+//!   cargo run -- decrypt-folder <input_dir> <output_dir> <password> [algorithm]
 //!
 //! 设计原则：
 //! - 不依赖 clap / structopt
@@ -21,6 +23,7 @@ use std::{env, path::Path};
 
 mod decrypt;
 mod encrypt;
+mod folder;
 
 use crate::algorithm::AeadAlgorithm;
 
@@ -28,7 +31,9 @@ fn print_usage() {
     eprintln!(
         "Usage:\n  \
          sealvault encrypt <input> <output> <password> [algorithm]\n  \
-         sealvault decrypt <input> <output> <password>"
+         sealvault decrypt <input> <output> <password>\n  \
+         sealvault encrypt-folder <input_dir> <output_dir> <password> [algorithm]\n  \
+         sealvault decrypt-folder <input_dir> <output_dir> <password> [algorithm]"
     );
 }
 
@@ -67,6 +72,28 @@ fn main() {
             encrypt::encrypt_file_with_algorithm(input, output, password, algorithm)
         }
         "decrypt" => decrypt::decrypt_file(input, output, password),
+        "encrypt-folder" => {
+            let algorithm = match parse_algorithm(args.get(5)) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    print_usage();
+                    exit(1);
+                }
+            };
+            folder::encrypt_folder(input, output, password, algorithm)
+        }
+        "decrypt-folder" => {
+            let algorithm = match parse_algorithm(args.get(5)) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    print_usage();
+                    exit(1);
+                }
+            };
+            folder::decrypt_folder(input, output, password, algorithm)
+        }
         _ => {
             print_usage();
             exit(1);

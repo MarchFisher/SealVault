@@ -1,5 +1,6 @@
 mod decrypt;
 mod encrypt;
+mod folder;
 
 pub mod algorithm;
 pub mod crypto;
@@ -27,4 +28,22 @@ pub fn encrypt_with_algorithm(
 
 pub fn decrypt(input: &Path, output: &Path, password: &str) -> std::io::Result<()> {
     decrypt::decrypt_file(input, output, password)
+}
+
+pub fn encrypt_folder(
+    input: &Path,
+    output: &Path,
+    password: &str,
+    algorithm: AeadAlgorithm,
+) -> std::io::Result<()> {
+    folder::encrypt_folder(input, output, password, algorithm)
+}
+
+pub fn decrypt_folder(
+    input: &Path,
+    output: &Path,
+    password: &str,
+    algorithm: AeadAlgorithm,
+) -> std::io::Result<()> {
+    folder::decrypt_folder(input, output, password, algorithm)
 }

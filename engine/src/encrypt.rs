@@ -9,7 +9,6 @@
 //! 4. 使用 StreamEncryptor 对文件内容进行流式加密
 //!
 //! 注意：
-//! - 本模块不负责原子写入
 //! - 不处理文件夹
 //! - 不做 UI / 密码输入
 
@@ -24,6 +23,7 @@ use crate::algorithm::AeadAlgorithm;
 use crate::crypto::kdf;
 use crate::format::header::{BASE_NONCE_SIZE, Header, SALT_SIZE};
 use crate::format::stream::{DEFAULT_CHUNK_SIZE, StreamEncryptor};
+use crate::fs::atomic::write_atomic;
 
 #[allow(dead_code)]
 /// 使用密码加密文件
@@ -42,12 +42,10 @@ pub fn encrypt_file_with_algorithm(
     password: &str,
     algorithm: AeadAlgorithm,
 ) -> std::io::Result<()> {
-    // ---------- 打开输入 / 输出文件 ----------
+    // ---------- 打开输入文件 ----------
     let input = File::open(input_path)?;
-    let output = File::create(output_path)?;
 
     let reader = BufReader::new(input);
-    let mut writer = BufWriter::new(output);
 
     // ---------- 生成 salt ----------
     let mut salt = [0u8; SALT_SIZE];
@@ -56,10 +54,6 @@ pub fn encrypt_file_with_algorithm(
     // ---------- 生成 base nonce ----------
     let mut base_nonce = [0u8; BASE_NONCE_SIZE];
     OsRng.fill_bytes(&mut base_nonce);
-
-    // ---------- 写入 Header ----------
-    let header = Header::new(algorithm, salt, base_nonce, DEFAULT_CHUNK_SIZE as u32);
-    header.write(&mut writer)?;
 
     // ---------- KDF 派生密钥 ----------
     let salt_string = SaltString::encode_b64(&salt)
@@ -71,10 +65,19 @@ pub fn encrypt_file_with_algorithm(
     // ---------- Stream 加密 ----------
     let mut encryptor = StreamEncryptor::new(&key, algorithm, base_nonce, DEFAULT_CHUNK_SIZE);
 
-    encryptor.encrypt(reader, &mut writer)?;
+    write_atomic(output_path, |output| {
+        let mut writer = BufWriter::new(output);
 
-    // 确保所有数据落盘
-    writer.flush()?;
+        // ---------- 写入 Header ----------
+        let header = Header::new(algorithm, salt, base_nonce, DEFAULT_CHUNK_SIZE as u32);
+        header.write(&mut writer)?;
+
+        encryptor.encrypt(reader, &mut writer)?;
+
+        // 确保所有数据落盘
+        writer.flush()?;
+        Ok(())
+    })?;
 
     Ok(())
 }

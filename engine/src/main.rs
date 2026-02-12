@@ -17,6 +17,7 @@ mod algorithm;
 mod crypto;
 mod error;
 mod format;
+mod fs;
 
 use std::process::exit;
 use std::{env, path::Path};

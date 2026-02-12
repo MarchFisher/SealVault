@@ -85,6 +85,26 @@ fn decrypt_with_wrong_password_fails() {
     assert!(result.is_err(), "expected decrypt to fail");
 }
 
+/// 测试错误密码解密失败时，不覆盖已有输出文件
+#[test]
+fn decrypt_with_wrong_password_keeps_existing_output_file() {
+    let temp_dir = tempdir().expect("create temp dir");
+    let input_path = temp_dir.path().join("input.txt");
+    let encrypted_path = temp_dir.path().join("output.svlt");
+    let decrypted_path = temp_dir.path().join("decrypted.txt");
+
+    fs::write(&input_path, b"correct payload").expect("write input");
+    engine::encrypt(&input_path, &encrypted_path, "correct-password").expect("encrypt file");
+
+    fs::write(&decrypted_path, b"do-not-overwrite").expect("write existing output");
+
+    let result = engine::decrypt(&encrypted_path, &decrypted_path, "wrong-password");
+    assert!(result.is_err(), "expected decrypt to fail");
+
+    let existing = fs::read(&decrypted_path).expect("read existing output");
+    assert_eq!(existing, b"do-not-overwrite");
+}
+
 /// 测试解密失败(invalid header magic)时的错误处理
 #[test]
 fn decrypt_rejects_invalid_header_magic() {

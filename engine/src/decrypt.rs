@@ -10,7 +10,6 @@
 //!
 //! 注意：
 //! - 若 Header 或任一 chunk 校验失败，必须立即报错
-//! - 本模块不负责覆盖保护或原子写入
 
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
@@ -21,15 +20,14 @@ use argon2::password_hash::SaltString;
 use crate::crypto::kdf;
 use crate::format::header::Header;
 use crate::format::stream::StreamDecryptor;
+use crate::fs::atomic::write_atomic;
 
 /// 使用密码解密文件
 pub fn decrypt_file(input_path: &Path, output_path: &Path, password: &str) -> std::io::Result<()> {
-    // ---------- 打开输入 / 输出文件 ----------
+    // ---------- 打开输入文件 ----------
     let input = File::open(input_path)?;
-    let output = File::create(output_path)?;
 
     let mut reader = BufReader::new(input);
-    let mut writer = BufWriter::new(output);
 
     // ---------- 读取并校验 Header ----------
     let header = Header::read(&mut reader)?;
@@ -44,9 +42,12 @@ pub fn decrypt_file(input_path: &Path, output_path: &Path, password: &str) -> st
     // ---------- Stream 解密 ----------
     let mut decryptor = StreamDecryptor::new(&key, header.algorithm, header.base_nonce);
 
-    decryptor.decrypt(&mut reader, &mut writer)?;
-
-    writer.flush()?;
+    write_atomic(output_path, |output| {
+        let mut writer = BufWriter::new(output);
+        decryptor.decrypt(&mut reader, &mut writer)?;
+        writer.flush()?;
+        Ok(())
+    })?;
 
     Ok(())
 }

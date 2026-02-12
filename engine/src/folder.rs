@@ -138,19 +138,20 @@ fn append_svlt_suffix(name: &OsStr) -> std::ffi::OsString {
 }
 
 fn remove_svlt_extension(rel_path: &Path) -> io::Result<PathBuf> {
-    let file_name = rel_path
-        .file_name()
-        .and_then(OsStr::to_str)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "无效文件名"))?;
+    let extension = rel_path
+        .extension()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "待解密文件后缀不是 .svlt"))?;
 
-    if !file_name.ends_with(".svlt") {
+    if extension != OsStr::new(ENCRYPTED_EXT) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "待解密文件后缀不是 .svlt",
         ));
     }
 
-    let origin_name = file_name.trim_end_matches(".svlt");
+    let origin_name = rel_path
+        .file_stem()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "无效文件名"))?;
     if origin_name.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,

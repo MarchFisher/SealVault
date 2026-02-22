@@ -152,7 +152,10 @@ fn folder_roundtrip_supports_non_utf8_file_names() {
     .expect("decrypt folder");
 
     let decrypted_path = decrypted_dir.join(&original_name);
-    assert!(decrypted_path.exists(), "decrypted non-utf8 path should exist");
+    assert!(
+        decrypted_path.exists(),
+        "decrypted non-utf8 path should exist"
+    );
     assert_eq!(
         fs::read(decrypted_path).expect("read non-utf8 file"),
         b"non-utf8 name payload"
